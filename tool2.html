@@ -1,0 +1,405 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <title>Audience Polling</title>
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      -webkit-tap-highlight-color: transparent;
+      user-select: none;
+      -webkit-user-select: none;
+    }
+
+    html, body {
+      width: 100%;
+      height: 100%;
+      height: 100dvh;
+      overflow: hidden;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      touch-action: manipulation;
+      background-color: #121212;
+      color: #FFFFFF;
+    }
+
+    #poll-container {
+      display: flex;
+      flex-direction: column;
+      width: 100%;
+      height: 100%;
+    }
+
+    #question-header {
+      background-color: #1E1E1E;
+      padding: 16px 20px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-bottom: 1px solid #333;
+    }
+
+    #question-title {
+      font-size: 1.25rem;
+      font-weight: 700;
+      letter-spacing: 0.5px;
+    }
+
+    .finish-early-btn {
+      background-color: rgba(229, 57, 53, 0.15);
+      color: #E53935;
+      border: 1px solid rgba(229, 57, 53, 0.4);
+      padding: 6px 12px;
+      font-size: 0.8rem;
+      font-weight: 700;
+      border-radius: 6px;
+      cursor: pointer;
+    }
+
+    .finish-early-btn:active {
+      opacity: 0.7;
+    }
+
+    #grid-view {
+      flex: 1;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      grid-template-rows: 1fr 1fr;
+      width: 100%;
+    }
+
+    .quadrant {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      border: none;
+      outline: none;
+      font-weight: 800;
+      font-size: clamp(3rem, 15vw, 6rem);
+      cursor: pointer;
+      transition: transform 0.08s ease, filter 0.08s ease;
+    }
+
+    .quadrant:active {
+      filter: brightness(0.85);
+      transform: scale(0.98);
+    }
+
+    .color-a { background-color: #E53935; color: #FFFFFF; } 
+    .color-b { background-color: #FDD835; color: #1A1A1A; } 
+    .color-c { background-color: #8E24AA; color: #FFFFFF; } 
+    .color-d { background-color: #1E88E5; color: #FFFFFF; } 
+
+    #vote-view {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      display: none;
+      flex-direction: column;
+      align-items: center;
+      justify-content: space-between;
+      padding: 40px 20px calc(24px + env(safe-area-inset-bottom, 0px)) 20px;
+      z-index: 10;
+    }
+
+    #vote-view.active {
+      display: flex;
+    }
+
+    #vote-letter {
+      font-size: clamp(7rem, 35vw, 16rem);
+      font-weight: 900;
+      line-height: 1;
+      margin: auto;
+    }
+
+    .vote-actions {
+      display: flex;
+      gap: 12px;
+      width: 100%;
+      max-width: 400px;
+    }
+
+    .action-btn {
+      flex: 1;
+      padding: 14px 10px;
+      font-size: 0.95rem;
+      font-weight: 700;
+      border-radius: 8px;
+      border: none;
+      cursor: pointer;
+      text-align: center;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+    }
+
+    .btn-change {
+      background-color: rgba(0, 0, 0, 0.35);
+      backdrop-filter: blur(4px);
+      color: #FFFFFF;
+      border: 1px solid rgba(255, 255, 255, 0.4);
+    }
+
+    .btn-confirm {
+      background-color: #FFFFFF;
+      color: #121212;
+    }
+
+    .action-btn:active {
+      opacity: 0.8;
+      transform: scale(0.98);
+    }
+
+    #summary-view {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background-color: #121212;
+      display: none;
+      flex-direction: column;
+      padding: 24px;
+      z-index: 20;
+      overflow-y: auto;
+    }
+
+    #summary-view.active {
+      display: flex;
+    }
+
+    .summary-header {
+      margin-bottom: 20px;
+    }
+
+    .summary-header h2 {
+      font-size: 1.5rem;
+      margin-bottom: 6px;
+    }
+
+    .timestamp {
+      font-size: 0.85rem;
+      color: #9E9E9E;
+    }
+
+    .summary-list {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      margin-bottom: 24px;
+    }
+
+    .summary-item {
+      background-color: #1E1E1E;
+      padding: 14px 16px;
+      border-radius: 8px;
+      border-left: 6px solid #333;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .summary-question {
+      font-size: 1rem;
+      font-weight: 600;
+    }
+
+    .summary-choice {
+      font-weight: 800;
+      font-size: 1.2rem;
+      padding: 4px 12px;
+      border-radius: 4px;
+    }
+
+    .restart-btn {
+      background-color: #1E88E5;
+      color: white;
+      border: none;
+      padding: 14px;
+      font-size: 1rem;
+      font-weight: bold;
+      border-radius: 8px;
+      cursor: pointer;
+      text-align: center;
+      margin-top: auto;
+    }
+
+    .restart-btn:active {
+      opacity: 0.8;
+    }
+  </style>
+</head>
+<body>
+
+  <div id="poll-container">
+    <header id="question-header">
+      <h1 id="question-title">Question 1</h1>
+      <button class="finish-early-btn" id="finish-btn">Finish Session</button>
+    </header>
+
+    <main id="grid-view">
+      <button class="quadrant color-a" data-choice="A">A</button>
+      <button class="quadrant color-b" data-choice="B">B</button>
+      <button class="quadrant color-c" data-choice="C">C</button>
+      <button class="quadrant color-d" data-choice="D">D</button>
+    </main>
+  </div>
+
+  <section id="vote-view">
+    <span id="vote-letter"></span>
+    <div class="vote-actions">
+      <button class="action-btn btn-change" id="change-btn">← Change Answer</button>
+      <button class="action-btn btn-confirm" id="confirm-btn">Confirm →</button>
+    </div>
+  </section>
+
+  <section id="summary-view">
+    <div class="summary-header">
+      <h2>Session Summary</h2>
+      <div class="timestamp" id="session-timestamp"></div>
+    </div>
+    <div class="summary-list" id="summary-results-list"></div>
+    <button class="restart-btn" id="restart-btn">Start Over / New Session</button>
+  </section>
+
+  <script>
+    const colorMap = {
+      'A': { bg: '#E53935', fg: '#FFFFFF' },
+      'B': { bg: '#FDD835', fg: '#1A1A1A' },
+      'C': { bg: '#8E24AA', fg: '#FFFFFF' },
+      'D': { bg: '#1E88E5', fg: '#FFFFFF' }
+    };
+
+    let currentQuestionNumber = 1;
+    let userSelections = [];
+    let pendingChoice = null;
+
+    const questionTitle = document.getElementById('question-title');
+    const gridView = document.getElementById('grid-view');
+    const voteView = document.getElementById('vote-view');
+    const voteLetter = document.getElementById('vote-letter');
+    const changeBtn = document.getElementById('change-btn');
+    const confirmBtn = document.getElementById('confirm-btn');
+    const finishBtn = document.getElementById('finish-btn');
+    const summaryView = document.getElementById('summary-view');
+    const summaryResultsList = document.getElementById('summary-results-list');
+    const sessionTimestamp = document.getElementById('session-timestamp');
+    const restartBtn = document.getElementById('restart-btn');
+
+    let wakeLock = null;
+    async function requestWakeLock() {
+      if ('wakeLock' in navigator) {
+        try {
+          wakeLock = await navigator.wakeLock.request('screen');
+        } catch (err) {}
+      }
+    }
+
+    function updateQuestionDisplay() {
+      questionTitle.textContent = `Question ${currentQuestionNumber}`;
+    }
+
+    document.querySelectorAll('.quadrant').forEach(button => {
+      button.addEventListener('click', () => {
+        pendingChoice = button.getAttribute('data-choice');
+        const config = colorMap[pendingChoice];
+
+        voteView.style.backgroundColor = config.bg;
+        voteLetter.textContent = pendingChoice;
+        voteLetter.style.color = config.fg;
+        
+        if (pendingChoice === 'B') {
+          changeBtn.style.borderColor = 'rgba(0, 0, 0, 0.4)';
+          changeBtn.style.backgroundColor = 'rgba(0, 0, 0, 0.15)';
+          changeBtn.style.color = '#1A1A1A';
+          confirmBtn.style.backgroundColor = '#1A1A1A';
+          confirmBtn.style.color = '#FDD835';
+        } else {
+          changeBtn.style.borderColor = 'rgba(255, 255, 255, 0.4)';
+          changeBtn.style.backgroundColor = 'rgba(0, 0, 0, 0.35)';
+          changeBtn.style.color = '#FFFFFF';
+          confirmBtn.style.backgroundColor = '#FFFFFF';
+          confirmBtn.style.color = '#121212';
+        }
+
+        gridView.style.display = 'none';
+        voteView.classList.add('active');
+        requestWakeLock();
+      });
+    });
+
+    changeBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      pendingChoice = null;
+      voteView.classList.remove('active');
+      gridView.style.display = 'grid';
+    });
+
+    confirmBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      userSelections.push({
+        questionNum: currentQuestionNumber,
+        choice: pendingChoice,
+        colorBg: colorMap[pendingChoice].bg
+      });
+
+      voteView.classList.remove('active');
+      currentQuestionNumber++;
+      updateQuestionDisplay();
+      gridView.style.display = 'grid';
+    });
+
+    finishBtn.addEventListener('click', () => {
+      showSummary();
+    });
+
+    function showSummary() {
+      const now = new Date();
+      sessionTimestamp.textContent = `Completed on: ${now.toLocaleString()}`;
+
+      summaryResultsList.innerHTML = '';
+      if (userSelections.length === 0) {
+        summaryResultsList.innerHTML = '<div style="color: #9E9E9E; text-align: center; padding: 20px;">No questions answered yet.</div>';
+      } else {
+        userSelections.forEach((item) => {
+          const div = document.createElement('div');
+          div.className = 'summary-item';
+          div.style.borderLeftColor = item.colorBg;
+          div.innerHTML = `
+            <span class="summary-question">Question ${item.questionNum}</span>
+            <span class="summary-choice" style="background-color: ${item.colorBg}; color: ${colorMap[item.choice].fg};">${item.choice}</span>
+          `;
+          summaryResultsList.appendChild(div);
+        });
+      }
+
+      gridView.style.display = 'none';
+      voteView.classList.remove('active');
+      summaryView.classList.add('active');
+    }
+
+    restartBtn.addEventListener('click', () => {
+      currentQuestionNumber = 1;
+      userSelections = [];
+      pendingChoice = null;
+      summaryView.classList.remove('active');
+      updateQuestionDisplay();
+      gridView.style.display = 'grid';
+    });
+
+    updateQuestionDisplay();
+
+    document.addEventListener('visibilitychange', () => {
+      if (wakeLock !== null && document.visibilityState === 'visible') {
+        requestWakeLock();
+      }
+    });
+  </script>
+</body>
+</html>
